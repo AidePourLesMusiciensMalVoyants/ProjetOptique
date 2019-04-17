@@ -54,7 +54,15 @@ def func():
 
 a = Speed(func, 100.)
 
+import time
+from datetime import datetime
+
+t0 = time.time()
 for t in range(5000):
+    t1 = time.time()
+
+    print(t1 - t0)
+
     value, speed = a.f(t/90.)
     x.append(value)
     vx.append(speed)

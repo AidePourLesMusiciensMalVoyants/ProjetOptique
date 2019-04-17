@@ -98,7 +98,7 @@ def send_data(x1, y1, x2, y2):
 
     try:
         # time.sleep(0.0001)
-        for i in range(1000):
+        for i in range(100):
             pass
         pass
     except KeyboardInterrupt:
@@ -106,6 +106,135 @@ def send_data(x1, y1, x2, y2):
         return QUIT
 
     return OK
+
+class Point(object):
+    def __init__(self, name, rangex=None, rangey=None, rangev=None):
+        self.name = name
+        self.first = True
+        self.ranges = dict()
+        self.t = None
+        self.x = None
+        self.y = None
+        self.vx = None
+        self.vy = None
+        self.sx = None
+        self.sy = None
+        self.svx = None
+        self.svy = None
+        self.prevt = None
+        self.prevx = None
+        self.prevy = None
+
+        if not rangex is None:
+            self.ranges["x"] = {'min': rangex[0], 'max': rangex[1]}
+        if not rangey is None:
+            self.ranges["y"] = {'min': rangey[0], 'max': rangey[1]}
+        if not rangev is None:
+            self.ranges["vx"] = {'min': rangev[0], 'max': rangev[1]}
+            self.ranges["vy"] = {'min': rangev[0], 'max': rangev[1]}
+
+    def set(self, t, x, y):
+        if not self.first:
+            self.prevt = self.t
+            self.prevx = self.x
+            self.prevy = self.x
+
+        self.t = t
+        self.x = x
+        self.y = y
+
+
+        if self.first:
+            self.first = False
+            return
+
+        dt = t - self.prevt
+        dx = x - self.prevx
+        dy = y - self.prevy
+
+        self.vx = dx/dt
+        self.vy = dy/dt
+
+        # print("set>>> t={} x={} y={} vx={} vy={}".format(t, x, y, self.vx, self.vy))
+
+        self.range()
+        text = self.print_range()
+        # print("ranges ", self.name, text)
+
+
+    def range(self):
+        for key in ["x", "y", "vx", "vy"]:
+            if not key in self.ranges:
+                self.ranges[key] = {'min': None, 'max': None}
+
+            if key == "x":
+                value = self.x
+            elif key == "y":
+                value = self.y
+            elif key == "vx":
+                value = self.vx
+            elif key == "vy":
+                value = self.vy
+
+            try:
+                value = int(value)
+            except:
+                continue
+
+            r = self.ranges[key]
+
+            if (r['min'] is None) or (value < r['min']):
+                r['min'] = value
+            if (r['max'] is None) or (value > r['max']):
+                r['max'] = value
+
+    def print_range(self):
+        t = ""
+        for key in ["x", "y", "vx", "vy"]:
+            if not key in self.ranges:
+                self.ranges[key] = {'min': None, 'max': None}
+            r = self.ranges[key]
+
+            t += " {} -> min={} max={}".format(key, r['min'], r['max'])
+        return t
+
+    def scale(self):
+        def compute_scale(value, vmin, vmax):
+            if value < vmin: value = vmin
+            if value > vmax: value = vmax
+            value = int(value)
+            a = float(value - vmin)
+            b = float(vmax - vmin)
+            scaled = int(float(a/b)*256)
+            return scaled
+
+        for key in ["x", "y", "vx", "vy"]:
+            if not key in self.ranges:
+                self.ranges[key] = {'min': None, 'max': None}
+
+            r = self.ranges[key]
+
+            if key == "x":
+                value = self.x
+            elif key == "y":
+                value = self.y
+            elif key == "vx":
+                value = self.vx
+            elif key == "vy":
+                value = self.vy
+
+            if not value is None:
+                svalue = compute_scale(value, r['min'], r['max'])
+
+                if key == "x":
+                    self.sx = svalue
+                elif key == "y":
+                    self.sy = svalue
+                elif key == "vx":
+                    self.svx = svalue
+                elif key == "vy":
+                    self.svy = svalue
+
 
 
 
@@ -140,6 +269,18 @@ class BodyGameRuntime(object):
         # here we will store skeleton data 
         self._bodies = None
 
+        self.t0 = time.time()
+        self.t = time.time()
+
+        """
+        x [0 .. 2000]
+        y [0 .. 1500]
+        vx [-200000 .. 200000]
+        """
+
+        self.left = Point("left", (0, 2000), (0, 1500), (-200000, 200000))
+        self.right = Point("right", (0, 2000), (0, 1500), (-200000, 200000))
+
 
     def draw_body_bone(self, joints, jointPoints, depthPoints, color, joint0, joint1):
         global x_min, x_max
@@ -163,109 +304,10 @@ class BodyGameRuntime(object):
         start = (jointPoints[joint0].x, jointPoints[joint0].y)
         end = (jointPoints[joint1].x, jointPoints[joint1].y)
 
-        a0 = jointPoints[joint0]
-        a1 = jointPoints[joint1]
-        # print(a0, a1)
-
-        for ji in joints._objects:
-            # print(ji)
-            os = joints._objects[ji]
-            io = os[11]
-            pos = io.Position
-
-            if x_min is None:
-                x_min = pos.x
-            elif pos.x < x_min:
-                x_min = pos.x
-
-            if y_min is None:
-                y_min = pos.y
-            elif pos.y < y_min:
-                y_min = pos.y
-
-            if z_min is None:
-                z_min = pos.z
-            elif pos.z < z_min:
-                z_min = pos.z
-
-            if x_max is None:
-                x_max = pos.x
-            elif pos.x > x_max:
-                x_max = pos.x
-
-            if y_max is None:
-                y_max = pos.y
-            elif pos.y > y_max:
-                y_max = pos.y
-
-            if z_max is None:
-                z_max = pos.z
-            elif pos.z > z_max:
-                z_max = pos.z
-
-            if xx_min is None:
-                xx_min = a0.x
-            elif a0.x < xx_min:
-                xx_min = a0.x
-
-            if yy_min is None:
-                yy_min = a0.y
-            elif a0.y < yy_min:
-                yy_min = a0.y
-
-            if xx_max is None:
-                xx_max = a0.x
-            elif a0.x > xx_max:
-                xx_max = a0.x
-
-            if yy_max is None:
-                yy_max = a0.y
-            elif a0.y > yy_max:
-                yy_max = a0.y
-
-            # print("x= [", x_min, ",", x_max, "] y=[", y_min, ",", y_max, "] z=[", z_min, ",", z_max, "] xx= [", xx_min, ",", xx_max, "] yy=[", yy_min, ",", yy_max, "]")
-
-        # print("Color={} from [{:3f}, {:3f}] to [{:3f}, {:3f}] ".format(color, a0.x, a0.y, a1.x, a1.y))
-
-        # with serial.Serial('COM5', speed, timeout=.1) as arduino:
-        #    pass
-
         try:
             pygame.draw.line(self._frame_surface, color, start, end, 8)
         except: # need to catch it due to possible invalid positions (with inf)
             pass
-
-    def range(self, key, value):
-        if not key in self.ranges:
-            self.ranges[key] = {'min': None, 'max': None}
-
-        try:
-            value = int(value)
-        except:
-            return
-
-        r = self.ranges[key]
-
-        if (r['min'] is None) or (value < r['min']):
-            r['min'] = value
-        if (r['max'] is None) or (value > r['max']):
-            r['max'] = value
-
-    def print_range(self, key):
-        if not key in self.ranges:
-            self.ranges[key] = {'min': None, 'max': None}
-        r = self.ranges[key]
-
-        return "{} -> min={} max={}".format(key, r['min'], r['max'])
-
-    def scale(self, value, vmin, vmax):
-        if value < vmin: value = vmin
-        if value > vmax: value = vmax
-        value = int(value)
-        a = float(value - vmin)
-        b = float(vmax - vmin)
-        scaled = int(float(a/b)*256)
-        return scaled
 
     def draw_body(self, joints, jointPoints, depthPoints, color):
         # Torso
@@ -301,31 +343,29 @@ class BodyGameRuntime(object):
         """
         x [0 .. 2000]
         y [0 .. 1500]
+        vx [-200000 .. 200000]
         """
 
+        t = time.time()
+        self.left.set(t, left.x, left.y)
+        self.right.set(t, right.x, right.y)
+
+        self.left.scale()
+        self.right.scale()
+
         """
-        self.range("xright", right.x)
-        self.range("yright", right.y)
-
-        self.range("xleft", left.x)
-        self.range("yleft", left.y)
-
-        txr = self.print_range("xright")
-        tyr = self.print_range("yright")
-        txl = self.print_range("xleft")
-        tyl = self.print_range("yleft")
-
-        print("Range>>> Left {},{} Right {},{}".format(txl, tyl, txr, tyr))
+        print("Positions>>> rx={} ry={} lx={} ly={} rvx={} rvy={} lvx={} lvy={}".format(self.left.sx,
+                                                                                        self.left.sy,
+                                                                                        self.right.sx,
+                                                                                        self.right.sy,
+                                                                                        self.left.svx,
+                                                                                        self.left.svy,
+                                                                                        self.right.svx,
+                                                                                        self.right.svy
+                                                                                        ))
         """
 
-        rx = self.scale(right.x, 0, 2000)
-        ry = self.scale(right.y, 0, 1500)
-        lx = self.scale(left.x, 0, 2000)
-        ly = self.scale(left.y, 0, 1500)
-
-        print("Positions>>> rx={} ry={} lx={} ly{}".format(rx, ry, lx, ly))
-
-        status = send_data(rx, ry, lx, ly)
+        status = send_data(self.left.sx, self.left.sy, self.right.sx, self.right.sy)
 
         # Right Leg
         """
