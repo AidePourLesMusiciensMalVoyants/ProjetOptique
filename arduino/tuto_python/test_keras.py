@@ -287,7 +287,7 @@ model = Sequential()
 # layer needs to make the input shape clear.
 # The model needs to know what input shape to expect and that’s why you’ll always find the input_shape,
 # input_dim, input_length, or batch_size arguments in the documentation of the layers and in practical
-# examples of those layers.
+# application of those layers.
 
 # In this case, you will have to use a Dense layer, which is a fully connected layer.
 # Dense layers implement the following operation: output = activation(dot(input, kernel) + bias).
