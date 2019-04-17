@@ -1,0 +1,177 @@
+=================
+from https://openclassrooms.com/forum/sujet/arduino-equivalant-explode-de-php
+strtok
+=================
+
+
+char str[] ="AB|CD|EF|GH";
+char dlm[] = "|";
+
+int cnt = 0;
+char* tab[10] = { 0 };
+
+char *pch = strtok(str, dlm);
+
+while ( pch != NULL ) {
+    if (cnt < 10) {
+        tab[cnt++] = pch;
+    } else {
+        break;
+    }
+    pch = strtok (NULL, dlm);
+}
+
+
+=================
+https://www.oreilly.com/library/view/arduino-cookbook/9781449399368/ch04.html
+=================
+
+=================
+sending binary data via Serial
+=================
+
+/*
+ * SendBinary sketch
+ * Sends a header followed by two random integer values as binary data.
+*/
+
+int intValue;    // an integer value (16 bits)
+
+void setup()
+{
+  Serial.begin(9600);
+}
+
+void loop()
+{
+  Serial.print('H'); // send a header character
+
+  // send a random integer
+  intValue = random(599); // generate a random number between 0 and 599
+  // send the two bytes that comprise an integer
+  Serial.print(lowByte(intValue), BYTE);  // send the low byte
+  Serial.print(highByte(intValue), BYTE); // send the high byte
+
+  // send another random integer
+  intValue = random(599); // generate a random number between 0 and 599
+  // send the two bytes that comprise an integer
+  Serial.print(lowByte(intValue), BYTE);  // send the low byte
+  Serial.print(highByte(intValue), BYTE); // send the high byte
+
+  delay(1000);
+}
+
+=================
+Sending long values
+=================
+
+intValue = longValue && 0xFFFF;  // get the value of the lower 16 bits
+Serial.print(lowByte(intVal), BYTE);
+Serial.print(highByte(intVal), BYTE);
+intValue = longValue >> 16;  // get the value of the higher 16 bits
+Serial.print(lowByte(intVal), BYTE);
+Serial.print(highByte(intVal), BYTE);
+
+
+=================
+Functions to send binary data
+=================
+
+
+// function to send the given integer value to the serial port
+void sendBinary(int value)
+{
+  // send the two bytes that comprise a two byte (16 bit) integer
+  Serial.print(lowByte(value), BYTE);  // send the low byte
+  Serial.print(highByte(value), BYTE); // send the high byte
+}
+
+// function to send the given long integer value to the serial port
+void sendBinary(long value)
+{
+  // first send the low 16 bit integer value
+  int temp = value && 0xFFFF;  // get the value of the lower 16 bits
+  sendBinary(temp);
+  // then send the higher 16 bit integer value:
+  temp = value >> 16;  // get the value of the higher 16 bits
+  sendBinary(temp);
+}
+
+
+=================
+Receive binary data
+=================
+
+/*
+ * ReceiveBinaryData_P
+ *
+ * portIndex must be set to the port connected to the Arduino
+*/
+import processing.serial.*;
+
+Serial myPort;        // Create object from Serial class
+short portIndex = 1;  // select the com port, 0 is the first port
+
+char HEADER = 'H';
+int value1, value2;         // Data received from the serial port
+
+void setup()
+{
+  size(600, 600);
+  // Open whatever serial port is connected to Arduino.
+  String portName = Serial.list()[portIndex];
+  println(Serial.list());
+  println(" Connecting to -> " + Serial.list()[portIndex]);
+  myPort = new Serial(this, portName, 9600);
+}
+
+void draw()
+{
+  // read the header and two binary *(16 bit) integers:
+  if ( myPort.available() >= 5)  // If at least 5 bytes are available,
+  {
+    if( myPort.read() == HEADER) // is this the header
+    {
+      value1 = myPort.read();                 // read the least significant byte
+      value1 =  myPort.read() * 256 + value1; // add the most significant byte
+
+      value2 = myPort.read();                 // read the least significant byte
+      value2 =  myPort.read() * 256 + value2; // add the most significant byte
+
+      println("Message received: " + value1 + "," + value2);
+    }
+  }
+  background(255);             // Set background to white
+  fill(0);                     // set fill to black
+// draw rectangle with coordinates based on the integers received from Arduino
+  rect(0, 0, value1,value2);
+}
+
+=================
+Functions to send binary data from python to Serial
+=================
+
+l = [0x30, 0x31, 0x32]
+s1 = "".join([chr(x) for x in l])
+s2 = "\x30\x31\x32"
+s3 = "123"
+s1 == s2 == s3 # True
+
+python
+
+c = 200
+':x'.format(c) => 'c8'
+c = 0xc8
+':x'.format(c) => 'c8'
+
+
+x = 200
+data = bytes([int(x)])
+ser.write(data)
+
+
+"{:x}".format((512 + 23) >> 8)
+Out[35]: '2'
+"{:x}".format((512 + 23) & 0xff)
+Out[36]: '17'
+
