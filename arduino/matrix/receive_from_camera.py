@@ -56,14 +56,12 @@ with serial.Serial('COM5', speed, timeout=.1) as arduino:
                 break
 
             if len(msgClient) > 0:
-                m = re.match(r"([\d]+)[|]([\d]+)[|]([\d]+)[|]([\d]+)[|]([\d]+)[|]([\d]+)[#]", msgClient)
+                m = re.match(r"([\d]+)[|]([\d]+)[|]([\d]+)[|]([\d]+)[#]", msgClient)
                 if not m is None:
-                    id1 = int(m[1])
-                    x1 = int(m[2])
-                    y1 = int(m[3])
-                    id2 = int(m[4])
-                    x2 = int(m[5])
-                    y2 = int(m[6])
+                    x1 = int(m[1])
+                    y1 = int(m[2])
+                    x2 = int(m[3])
+                    y2 = int(m[4])
                     """
                     if not previous is None:
                         if number != (previous + 1):
@@ -73,13 +71,13 @@ with serial.Serial('COM5', speed, timeout=.1) as arduino:
                     """
 
                 if (number % 1) == 0:
-                    print("{}|{}|{}|{}|{}|{}#".format(id1, x1, y1, id2, x2, y2))
+                    print("send >>> {}|{}|{}|{}|{}#".format(number, x1, y1, x2, y2))
 
-                    arduino.write("{}|{}|{}|{}|{}|{}#".format(id1, x1, y1, id2, x2, y2).encode("utf-8"))
+                    arduino.write("{}|{}|{}|{}|{}#".format(number, x1, y1, x2, y2).encode("utf-8"))
 
                     data = arduino.readline()
                     if data:
-                        print(">>>", data.strip())
+                        print("received >>>", data.strip())
 
                 number += 1
                 """

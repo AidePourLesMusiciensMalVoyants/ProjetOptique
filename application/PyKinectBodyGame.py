@@ -79,7 +79,7 @@ def set_connexion():
     return OK, mySocket
 
 
-def send_data(id1, x1, y1, id2, x2, y2):
+def send_data(x1, y1, x2, y2):
     global message
     global mySocket
 
@@ -89,7 +89,7 @@ def send_data(id1, x1, y1, id2, x2, y2):
             return status
 
     try:
-        mySocket.send("{}|{}|{}|{}|{}|{}#".format(id1, x1, y1, id2, x2, y2).encode("utf-8"))
+        mySocket.send("{}|{}|{}|{}#".format(x1, y1, x2, y2).encode("utf-8"))
         message += 1
     except socket.error:
         print("Disconnexion from server")
@@ -242,7 +242,7 @@ class BodyGameRuntime(object):
         try:
             value = int(value)
         except:
-            value = sys.maxsize
+            return
 
         r = self.ranges[key]
 
@@ -256,7 +256,7 @@ class BodyGameRuntime(object):
             self.ranges[key] = {'min': None, 'max': None}
         r = self.ranges[key]
 
-        print("{} -> min={} max={}".format(key, r['min'], r['max']))
+        return "{} -> min={} max={}".format(key, r['min'], r['max'])
 
     def scale(self, value, vmin, vmax):
         if value < vmin: value = vmin
@@ -303,17 +303,19 @@ class BodyGameRuntime(object):
         y [0 .. 1500]
         """
 
+        """
         self.range("xright", right.x)
         self.range("yright", right.y)
 
         self.range("xleft", left.x)
         self.range("yleft", left.y)
 
-        """
-        self.print_range("xright")
-        self.print_range("yright")
-        self.print_range("xleft")
-        self.print_range("yleft")
+        txr = self.print_range("xright")
+        tyr = self.print_range("yright")
+        txl = self.print_range("xleft")
+        tyl = self.print_range("yleft")
+
+        print("Range>>> Left {},{} Right {},{}".format(txl, tyl, txr, tyr))
         """
 
         rx = self.scale(right.x, 0, 2000)
@@ -321,11 +323,9 @@ class BodyGameRuntime(object):
         lx = self.scale(left.x, 0, 2000)
         ly = self.scale(left.y, 0, 1500)
 
-        ### print("right = [{} {}] left = [{} {}] right = [{} {}] left = [{} {}]".format(right.x, right.y, left.x, left.y, rx, ry, lx, ly))
+        print("Positions>>> rx={} ry={} lx={} ly{}".format(rx, ry, lx, ly))
 
-        print("rx={} ry={} lx={} ly{}".format(rx, ry, lx, ly))
-
-        status = send_data(1, rx, ry, 2, lx, ly)
+        status = send_data(rx, ry, lx, ly)
 
         # Right Leg
         """

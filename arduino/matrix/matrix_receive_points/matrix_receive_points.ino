@@ -86,14 +86,12 @@ long number = 0;
  * the current Led (row, column) to be set in the LED matrix
  */
 
-void get_coords(int* id1, int* x1, int* y1, int* id2, int* x2, int* y2)
+void get_coords(int* number, int* x1, int* y1, int* x2, int* y2)
 {
   if(Serial.available() > 0) {
     byte data = Serial.read();
     if (data == '#')
     {
-      number += 1;
-
       /*
       Serial.print('(');
       Serial.print(number);
@@ -113,7 +111,7 @@ void get_coords(int* id1, int* x1, int* y1, int* id2, int* x2, int* y2)
           if (value >= 256) value = 255;
           if (var == 0)
           {
-            *id1 = value;
+            *number = value;
           }
           if (var == 1)
           {
@@ -123,15 +121,11 @@ void get_coords(int* id1, int* x1, int* y1, int* id2, int* x2, int* y2)
           {
             *y1 = value;
           }
-          if (var == 0)
-          {
-            *id2 = value;
-          }
-          if (var == 1)
+          if (var == 3)
           {
             *x2 = value;
           }
-          if (var == 2)
+          if (var == 4)
           {
             *y2 = value;
           }
@@ -174,19 +168,16 @@ void loop() {
       int xs[2];
       int ys[2];
       
-      int id1 = -1;
+      int number = -1;
       int x1 = -1;
       int y1 = -1;
-
-      int id2 = -1;
       int x2 = -1;
       int y2 = -1;
 
-      get_coords(&id1, &x1, &y1, &id2, &x2, &y2);
+      get_coords(&number, &x1, &y1, &x2, &y2);
 
       if (x1 > -1 && y1 > -1 && x2 > -1 && y2 > -1)
       {
-        number += 1;
         //Serial.println(timeCount);
 
         c1 = coord2row(x1, 0, 256);
@@ -194,17 +185,20 @@ void loop() {
         c2 = coord2row(x2, 0, 256);
         r2 = coord2row(y2, 0, 256);
 
-        Serial.print("<");
-        Serial.print("x1 = ");
+        Serial.print("<<<");
+        Serial.print("number=");
+        Serial.print(number);
+        Serial.print(",");
+        Serial.print("x1=");
         Serial.print(x1);
         Serial.print(",");
-        Serial.print("y1 = ");
+        Serial.print("y1=");
         Serial.print(y1);
         Serial.print(",");
-        Serial.print("x2 = ");
+        Serial.print("x2=");
         Serial.print(x2);
         Serial.print(",");
-        Serial.print("y2 = ");
+        Serial.print("y2=");
         Serial.print(y2);
         Serial.println("");
       }
