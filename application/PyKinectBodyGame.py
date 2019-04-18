@@ -202,10 +202,14 @@ class Point(object):
         def compute_scale(value, vmin, vmax):
             if value < vmin: value = vmin
             if value > vmax: value = vmax
-            value = int(value)
-            a = float(value - vmin)
-            b = float(vmax - vmin)
-            scaled = int(float(a/b)*256)
+            scaled = 0
+            try:
+                value = int(value)
+                a = float(value - vmin)
+                b = float(vmax - vmin)
+                scaled = int(float(a/b)*256)
+            except:
+                pass
             return scaled
 
         for key in ["x", "y", "vx", "vy"]:
@@ -223,7 +227,7 @@ class Point(object):
             elif key == "vy":
                 value = self.vy
 
-            if not value is None:
+            if not (value is None or value is math.nan):
                 svalue = compute_scale(value, r['min'], r['max'])
 
                 if key == "x":
