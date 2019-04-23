@@ -10,6 +10,9 @@ import serial
 import random
 import math
 import sys, os, time
+from Point import *
+import numpy as np
+import matplotlib.pyplot as plt
 
 if sys.hexversion >= 0x03000000:
     import _thread as thread
@@ -55,6 +58,13 @@ OK = 0
 DISCONNEXION = 1
 QUIT = 2
 ERROR = 3
+
+plot_origin = time.time()
+
+plt.ion()
+plot_fig = plt.figure()
+plot_ax = plot_fig.add_subplot(111)
+
 
 def set_connexion():
 
@@ -107,137 +117,6 @@ def send_data(x1, y1, x2, y2):
 
     return OK
 
-class Point(object):
-    def __init__(self, name, rangex=None, rangey=None, rangev=None):
-        self.name = name
-        self.first = True
-        self.ranges = dict()
-        self.t = None
-        self.x = None
-        self.y = None
-        self.vx = None
-        self.vy = None
-        self.sx = None
-        self.sy = None
-        self.svx = None
-        self.svy = None
-        self.prevt = None
-        self.prevx = None
-        self.prevy = None
-
-        if not rangex is None:
-            self.ranges["x"] = {'min': rangex[0], 'max': rangex[1]}
-        if not rangey is None:
-            self.ranges["y"] = {'min': rangey[0], 'max': rangey[1]}
-        if not rangev is None:
-            self.ranges["vx"] = {'min': rangev[0], 'max': rangev[1]}
-            self.ranges["vy"] = {'min': rangev[0], 'max': rangev[1]}
-
-    def set(self, t, x, y):
-        if not self.first:
-            self.prevt = self.t
-            self.prevx = self.x
-            self.prevy = self.x
-
-        self.t = t
-        self.x = x
-        self.y = y
-
-
-        if self.first:
-            self.first = False
-            return
-
-        dt = t - self.prevt
-        dx = x - self.prevx
-        dy = y - self.prevy
-
-        self.vx = dx/dt
-        self.vy = dy/dt
-
-        # print("set>>> t={} x={} y={} vx={} vy={}".format(t, x, y, self.vx, self.vy))
-
-        self.range()
-        text = self.print_range()
-        # print("ranges ", self.name, text)
-
-
-    def range(self):
-        for key in ["x", "y", "vx", "vy"]:
-            if not key in self.ranges:
-                self.ranges[key] = {'min': None, 'max': None}
-
-            if key == "x":
-                value = self.x
-            elif key == "y":
-                value = self.y
-            elif key == "vx":
-                value = self.vx
-            elif key == "vy":
-                value = self.vy
-
-            try:
-                value = int(value)
-            except:
-                continue
-
-            r = self.ranges[key]
-
-            if (r['min'] is None) or (value < r['min']):
-                r['min'] = value
-            if (r['max'] is None) or (value > r['max']):
-                r['max'] = value
-
-    def print_range(self):
-        t = ""
-        for key in ["x", "y", "vx", "vy"]:
-            if not key in self.ranges:
-                self.ranges[key] = {'min': None, 'max': None}
-            r = self.ranges[key]
-
-            t += " {} -> min={} max={}".format(key, r['min'], r['max'])
-        return t
-
-    def scale(self):
-        def compute_scale(value, vmin, vmax):
-            if value < vmin: value = vmin
-            if value > vmax: value = vmax
-            scaled = 0
-            try:
-                value = int(value)
-                a = float(value - vmin)
-                b = float(vmax - vmin)
-                scaled = int(float(a/b)*256)
-            except:
-                pass
-            return scaled
-
-        for key in ["x", "y", "vx", "vy"]:
-            if not key in self.ranges:
-                self.ranges[key] = {'min': None, 'max': None}
-
-            r = self.ranges[key]
-
-            if key == "x":
-                value = self.x
-            elif key == "y":
-                value = self.y
-            elif key == "vx":
-                value = self.vx
-            elif key == "vy":
-                value = self.vy
-
-            if not (value is None or value is math.nan):
-                svalue = compute_scale(value, r['min'], r['max'])
-
-                if key == "x":
-                    self.sx = svalue
-                elif key == "y":
-                    self.sy = svalue
-                elif key == "vx":
-                    self.svx = svalue
-                elif key == "vy":
-                    self.svy = svalue
 
 
 
@@ -282,8 +161,12 @@ class BodyGameRuntime(object):
         vx [-200000 .. 200000]
         """
 
-        self.left = Point("left", (0, 2000), (0, 1500), (-200000, 200000))
-        self.right = Point("right", (0, 2000), (0, 1500), (-200000, 200000))
+        self.left = Point("left", (0, 2000), (0, 2000), (-200000, 200000))
+        self.right = Point("right", (0, 2000), (0, 2000), (-200000, 200000))
+
+        self.left.start_plotting(plot_fig, plot_ax, colorx="r", colory="g")
+        self.right.start_plotting(plot_fig, plot_ax, colorx="b", colory="y")
+
 
 
     def draw_body_bone(self, joints, jointPoints, depthPoints, color, joint0, joint1):
@@ -346,16 +229,19 @@ class BodyGameRuntime(object):
 
         """
         x [0 .. 2000]
-        y [0 .. 1500]
+        y [0 .. 2000]
         vx [-200000 .. 200000]
         """
 
         t = time.time()
-        self.left.set(t, left.x, left.y)
-        self.right.set(t, right.x, right.y)
+        self.left.set(t, left.x, 1000 - left.y)
+        self.right.set(t, right.x, 1000 - right.y)
 
         self.left.scale()
         self.right.scale()
+
+        self.left.plot()
+        self.right.plot()
 
         """
         print("Positions>>> rx={} ry={} lx={} ly={} rvx={} rvy={} lvx={} lvy={}".format(self.left.sx,

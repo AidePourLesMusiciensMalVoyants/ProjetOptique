@@ -34,6 +34,7 @@ long timeCount = 0;
 // long speed = 9600;
 long speed = 115200;
 
+// Buffer to receive Serial input
 char buffer[256];
 int pos = 0;
 
@@ -53,19 +54,6 @@ void setup()
     pinMode(A1, OUTPUT);
     pinMode(A2, OUTPUT);
     pinMode(A3, OUTPUT);
-
-    /*
-    while (Serial.available() > 0)
-    {
-       byte data = Serial.read();
-       if (data == '>')
-       {
-          break;
-       }
-    }
-    */
-    Serial.println("starting");
-
 }
 
 /*
@@ -83,8 +71,11 @@ bool started = false;
 long number = 0;
 
 /*
- * the current Led (row, column) to be set in the LED matrix
- */
+ * Receive 2 points from the PC
+ * each sends coordinates (x, y)
+ * the data format is <number>|<x1>|<y1>|<x2>|<y2>#
+ * both values are expected to be in the range [0...256]
+*/
 
 void get_coords(int* number, int* x1, int* y1, int* x2, int* y2)
 {
@@ -146,12 +137,22 @@ void get_coords(int* number, int* x1, int* y1, int* x2, int* y2)
   }
 }
 
+/*
+A simulation mode generates random input valut instead of receiving it from serial
+*/
+bool simulation = 0;
+
 void loop() {
     timeCount += 1;
     // A visit rate of 30000 roughly corresponds to one second
     // ie. the minimal loop occurs at the maximal frequence of 1/30000 seconds = 33 µs
 
     long change_point = 1;
+
+    if (simulation)
+    {
+      change_point = 1000;
+    }
 
     byte c1;
     byte r1;
@@ -160,21 +161,23 @@ void loop() {
 
     if (timeCount % change_point == 0)
     {
-      /*
-      int x = random(256);
-      int y = random(256);
-      */
-
-      int xs[2];
-      int ys[2];
-      
       int number = -1;
       int x1 = -1;
       int y1 = -1;
       int x2 = -1;
       int y2 = -1;
 
-      get_coords(&number, &x1, &y1, &x2, &y2);
+      if (simulation)
+      {
+        x1 = random(256);
+        y1 = random(256);
+        x2 = random(256);
+        y2 = random(256);
+      }
+      else
+      {
+        get_coords(&number, &x1, &y1, &x2, &y2);
+      }
 
       if (x1 > -1 && y1 > -1 && x2 > -1 && y2 > -1)
       {
@@ -213,7 +216,9 @@ void loop() {
     }
 }
 
-
+/*
+Draw 2 points on the LED matrix.
+*/
 void drawPoints(byte column1, byte row1, byte column2, byte row2) {
     byte LEDS[] = {
       B00000000,B00000000,B00000000,B00000000,B00000000,B00000000,B00000000,B00000000

@@ -4,7 +4,13 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import random
-
+import time
+from pandas import Series
+from pandas import DataFrame
+from pandas import TimeGrouper
+import pandas as pd
+import datetime as dt
+from Point import *
 
 class Speed:
     def __init__(self, f, step):
@@ -52,24 +58,48 @@ def func():
     # return random.random()
     return math.sin(t)
 
-a = Speed(func, 100.)
+def using_speed():
+    a = Speed(func, 100.)
 
-import time
-from datetime import datetime
+    t0 = time.time()
+    for t in range(5000):
+        t1 = time.time()
 
-t0 = time.time()
-for t in range(5000):
-    t1 = time.time()
+        print(t1 - t0)
 
-    print(t1 - t0)
-
-    value, speed = a.f(t/90.)
-    x.append(value)
-    vx.append(speed)
+        value, speed = a.f(t/90.)
+        x.append(value)
+        vx.append(speed)
 
 
-fig, ax = plt.subplots()
-ax.plot(x)
-ax.plot(vx)
-plt.show()
+    fig, ax = plt.subplots()
+    ax.plot(x)
+    ax.plot(vx)
+    plt.show()
 
+def using_points():
+    origin = time.time()
+    p = Point("p", rangex=[0.0, 1.0], rangey=[1.0, 2.0])
+
+    plt.ion()
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    p.start_plotting(fig, ax)
+
+    while True:
+
+        x = random.random()
+        y = random.random() + 1
+        t = time.time() - origin
+
+        # print("t=", t)
+
+        t, x, y, vx, vy = p.set(t, x, y)
+
+        p.plot()
+
+        plt.pause(0.001)
+
+
+using_points()
