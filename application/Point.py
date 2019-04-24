@@ -4,38 +4,48 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-
+"""
+Class Point 
+Handle coordinates of a point in space
+Acquire realtime values of x, y
+Compute the speed (vx,vy) = (dx/dt, dy/dt)
+May plot the evolution of x & y on a dynamic plot
+"""
 class Point(object):
     def __init__(self, name, rangex=None, rangey=None, rangev=None):
-        self.name = name
-        self.first = True
-        self.ranges = dict()
-        self.t = None
+        self.name = name            # general key
+        self.first = True           # general start marker
+        self.ranges = dict()        # declared or computed ranges
+
+        self.t = None               # acquisition
         self.x = None
         self.y = None
-        self.vx = None
+
+        self.vx = None              # computation
         self.vy = None
-        self.sx = None
+
+        self.sx = None              # scaled values
         self.sy = None
         self.svx = None
         self.svy = None
-        self.prevt = None
+
+        self.prevt = None           # differences to compute the speed
         self.prevx = None
         self.prevy = None
 
-        # plotting the oint data
-        self.nbins = 200
-        self.ts = [0] * self.nbins
+        # plotting the point data
+        self.nbins = 500
+        self.ts = [0] * self.nbins  # buffered data for plotting
         self.xs = [0] * self.nbins
         self.ys = [0] * self.nbins
 
-        self.plotting = False
-        self.origin = None
-        self.plot_index = None
-        self.fig = None
+        self.plotting = False       # state for plotting
+        self.origin = None          # origin of acquisition
+        self.plot_index = None      # current position in plotting buffer
+        self.fig = None             # matplotlib variables
         self.ax = None
         self.plot_first = True
-        self.xline = None
+        self.xline = None           # graphical objects
         self.yline = None
 
         if not rangex is None:
@@ -47,6 +57,10 @@ class Point(object):
             self.ranges["vy"] = {'min': rangev[0], 'max': rangev[1]}
 
     def set(self, t, x, y):
+        """
+        Real time acquisition of position
+        Compute speed
+        """
         while self.first:
             self.first = False
 
@@ -81,6 +95,10 @@ class Point(object):
 
 
     def range(self):
+        """
+        Compute the range when not specified at creation
+        :return:
+        """
         for key in ["x", "y", "vx", "vy"]:
             if not key in self.ranges:
                 self.ranges[key] = {'min': None, 'max': None}
@@ -117,6 +135,9 @@ class Point(object):
         return t
 
     def scale(self):
+        """
+        Compute scaled values according to range
+        """
         def compute_scale(value, vmin, vmax):
             if value < vmin: value = vmin
             if value > vmax: value = vmax
@@ -158,21 +179,37 @@ class Point(object):
                     self.svy = svalue
 
     def start_plotting(self, fig, ax, colorx="r", colory="g"):
+        """
+        Initialize the plotting
+        """
         self.plotting = True
         self.origin = time.time()
         self.plot_index = 0
         self.fig = fig
         self.ax = ax
+
         self.plot_first = True
         self.xline = None
         self.yline = None
         self.colorx = colorx
         self.colory = colory
 
+        # initialize default extrema according to range
         self.set(time.time(), self.ranges["x"]["min"], self.ranges["y"]["min"])
         self.set(time.time(), self.ranges["x"]["max"], self.ranges["y"]["max"])
 
     def plot(self):
+        """
+        Dynamic plotting of acquired values
+        1)
+            fill in one buffer of values before really plotting
+        2)
+            once the buffer is filled, coming values are appended at end of cyclic buffer
+
+        At first real plot action, plotting objects are created and time line is created linear
+        Then for every plot plotting objects are refreshed from real scaled data
+
+        """
         if not self.plotting:
             return
 
@@ -181,13 +218,19 @@ class Point(object):
         y = self.y
 
         if self.plot_index < self.nbins:
+            # just filling the buffer. No real plot
             self.ts[self.plot_index] = t
             self.xs[self.plot_index] = x
             self.ys[self.plot_index] = y
 
             self.plot_index += 1
 
+            self.i = 0
+
             return
+
+        # now the buffer is filled , we inject new data to the buffer as a cyclic buffer
+        self.i += 1
 
         self.ts.pop(0)
         self.xs.pop(0)
@@ -196,20 +239,24 @@ class Point(object):
         self.xs.append(x)
         self.ys.append(y)
 
-        #x0 = self.ts[0]
-        #ttt = [(t - x0) for t in self.ts[0:self.plot_index + 1]]
+        # synchronize times to moving origin
+        t0 = self.ts[0]
+        time_line = [(t - t0) for t in self.ts]
 
-        if self.plot_index == self.nbins:
+        if self.plot_first:
+            # initialization of plotting objects
+            self.plot_first = False
 
-            if self.plot_first:
-                self.plot_first = False
-
-                x = np.linspace(0, 1, self.nbins)
-                self.xline, = self.ax.plot(x, self.xs, '{}-'.format(self.colorx))
-                self.yline, = self.ax.plot(x, self.ys, '{}-'.format(self.colory))
-            else:
-                # self.xline.set_xdata(self.xs)
-                self.xline.set_ydata(self.xs)
-                self.yline.set_ydata(self.ys)
+            """
+            we initialize the time line, with a linear distribution of times to erase irregular starting times
+            """
+            time_line = np.linspace(0.0, 5.0, self.nbins)
+            self.xline, = self.ax.plot(time_line, self.xs, '{}-'.format(self.colorx))
+            self.yline, = self.ax.plot(time_line, self.ys, '{}-'.format(self.colory))
+        else:
+            self.xline.set_xdata(time_line)
+            self.xline.set_ydata(self.xs)
+            self.yline.set_xdata(time_line)
+            self.yline.set_ydata(self.ys)
 
         plt.pause(0.001)
