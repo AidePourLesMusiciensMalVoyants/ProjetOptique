@@ -3,122 +3,28 @@ from pykinect2.PyKinectV2 import *
 from pykinect2 import PyKinectRuntime
 
 import ctypes
-import _ctypes
 import pygame
 import sys
-import serial
-import random
-import math
-import sys, os, time
+
 from Point import *
-import numpy as np
+from Bridge import *
+
 import matplotlib.pyplot as plt
+import time
 
 if sys.hexversion >= 0x03000000:
     import _thread as thread
 else:
     import thread
 
-speed = 115200
-
-# colors for drawing different bodies 
+# colors for drawing different bodies
 SKELETON_COLORS = [pygame.color.THECOLORS["red"], 
-                  pygame.color.THECOLORS["blue"], 
-                  pygame.color.THECOLORS["green"], 
-                  pygame.color.THECOLORS["orange"], 
-                  pygame.color.THECOLORS["purple"], 
-                  pygame.color.THECOLORS["yellow"], 
-                  pygame.color.THECOLORS["violet"]]
-
-
-x_min = None
-x_max = None
-y_min = None
-y_max = None
-z_min = None
-z_max = None
-
-xx_min = None
-xx_max = None
-yy_min = None
-yy_max = None
-
-import socket, sys
-import random
-import time
-
-HOST = 'nb-arnault4'
-PORT = 5000
-
-mySocket = None
-
-message = 0
-
-OK = 0
-DISCONNEXION = 1
-QUIT = 2
-ERROR = 3
-
-plot_origin = time.time()
-
-plt.ion()
-plot_fig = plt.figure()
-plot_ax = plot_fig.add_subplot(111)
-
-
-def set_connexion():
-
-    print("testing for connexion...")
-
-    # 1) création du socket :
-    try:
-        mySocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    except socket.error:
-        return ERROR, None
-
-    # 2) envoi d'une requête de connexion au serveur :
-    try:
-        mySocket.connect((HOST, PORT))
-    except socket.error:
-        return ERROR, None
-
-    print("Connexion établie avec le serveur.")
-
-    # 3) Dialogue avec le serveur :
-
-    return OK, mySocket
-
-
-def send_data(x1, y1, x2, y2):
-    global message
-    global mySocket
-
-    if mySocket is None:
-        status, mySocket = set_connexion()
-        if status != OK:
-            return status
-
-    try:
-        mySocket.send("{}|{}|{}|{}#".format(x1, y1, x2, y2).encode("utf-8"))
-        message += 1
-    except socket.error:
-        print("Disconnexion from server")
-        mySocket = None
-        return DISCONNEXION
-
-    try:
-        # time.sleep(0.0001)
-        for i in range(100):
-            pass
-        pass
-    except KeyboardInterrupt:
-        mySocket = None
-        return QUIT
-
-    return OK
-
-
-
+                   pygame.color.THECOLORS["blue"],
+                   pygame.color.THECOLORS["green"],
+                   pygame.color.THECOLORS["orange"],
+                   pygame.color.THECOLORS["purple"],
+                   pygame.color.THECOLORS["yellow"],
+                   pygame.color.THECOLORS["violet"]]
 
 
 class BodyGameRuntime(object):
@@ -164,17 +70,16 @@ class BodyGameRuntime(object):
         self.left = Point("left", (0, 2000), (0, 2000), (-200000, 200000))
         self.right = Point("right", (0, 2000), (0, 2000), (-200000, 200000))
 
+        plt.ion()
+        plot_fig = plt.figure()
+        plot_ax = plot_fig.add_subplot(111)
+
         self.left.start_plotting(plot_fig, plot_ax, colorx="r", colory="g")
         self.right.start_plotting(plot_fig, plot_ax, colorx="b", colory="y")
 
-
+        self.bridge = Bridge()
 
     def draw_body_bone(self, joints, jointPoints, depthPoints, color, joint0, joint1):
-        global x_min, x_max
-        global y_min, y_max
-        global z_min, z_max
-        global xx_min, xx_max
-        global yy_min, yy_max
 
         joint0State = joints[joint0].TrackingState;
         joint1State = joints[joint1].TrackingState;
@@ -227,12 +132,6 @@ class BodyGameRuntime(object):
         right = jointPoints[PyKinectV2.JointType_HandRight]
         left = jointPoints[PyKinectV2.JointType_HandLeft]
 
-        """
-        x [0 .. 2000]
-        y [0 .. 2000]
-        vx [-200000 .. 200000]
-        """
-
         t = time.time()
         self.left.set(t, left.x, 1000 - left.y)
         self.right.set(t, right.x, 1000 - right.y)
@@ -255,17 +154,17 @@ class BodyGameRuntime(object):
                                                                                         ))
         """
 
-        status = send_data(self.left.sx, self.left.sy, self.right.sx, self.right.sy)
+        status = self.bridge.send_data(self.left.sx, self.left.sy, self.right.sx, self.right.sy)
 
-        # Right Leg
         """
+        # Right Leg
         self.draw_body_bone(joints, jointPoints, depthPoints, color, PyKinectV2.JointType_HipRight, PyKinectV2.JointType_KneeRight);
         self.draw_body_bone(joints, jointPoints, depthPoints, color, PyKinectV2.JointType_KneeRight, PyKinectV2.JointType_AnkleRight);
         self.draw_body_bone(joints, jointPoints, depthPoints, color, PyKinectV2.JointType_AnkleRight, PyKinectV2.JointType_FootRight);
         """
 
-        # Left Leg
         """
+        # Left Leg
         self.draw_body_bone(joints, jointPoints, depthPoints, color, PyKinectV2.JointType_HipLeft, PyKinectV2.JointType_KneeLeft);
         self.draw_body_bone(joints, jointPoints, depthPoints, color, PyKinectV2.JointType_KneeLeft, PyKinectV2.JointType_AnkleLeft);
         self.draw_body_bone(joints, jointPoints, depthPoints, color, PyKinectV2.JointType_AnkleLeft, PyKinectV2.JointType_FootLeft);
@@ -280,15 +179,6 @@ class BodyGameRuntime(object):
         target_surface.unlock()
 
     def run(self):
-        global mySocket
-
-        """
-        while True:
-            status, mySocket = set_connexion()
-            if status == OK:
-                break
-        """
-
         quit = False
         status = OK
 

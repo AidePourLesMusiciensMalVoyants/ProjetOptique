@@ -246,16 +246,6 @@ class Point(object):
         t0 = self.ts[0]
         time_line = [(t - t0) for t in self.ts]
 
-        """
-
-            new_time_line = np.linspace(time_line.min(), time_line.max(), self.nbins)  # 300 represents number of points to make between T.min and T.max
-
-            spl = make_interp_spline(time_line, power, k=3)  # BSpline object
-            power_smooth = spl(xnew)
-
-plt.plot(xnew,power_smooth)
-        """
-
         smooth_factor = 1.0
 
         if self.plot_first:
