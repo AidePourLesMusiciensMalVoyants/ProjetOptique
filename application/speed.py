@@ -29,6 +29,7 @@ def using_points():
 
     while True:
 
+
         x = random.random()
         y = random.random() + 1
         t = time.time() - origin
@@ -39,5 +40,6 @@ def using_points():
 
         p.plot()
 
+        # time.sleep(random.random()*0.1)
 
 using_points()

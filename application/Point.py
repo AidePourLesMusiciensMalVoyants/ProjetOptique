@@ -3,6 +3,9 @@ import math
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.interpolate import make_interp_spline, BSpline
+from scipy.ndimage.filters import gaussian_filter1d
+
 
 """
 Class Point 
@@ -243,6 +246,18 @@ class Point(object):
         t0 = self.ts[0]
         time_line = [(t - t0) for t in self.ts]
 
+        """
+
+            new_time_line = np.linspace(time_line.min(), time_line.max(), self.nbins)  # 300 represents number of points to make between T.min and T.max
+
+            spl = make_interp_spline(time_line, power, k=3)  # BSpline object
+            power_smooth = spl(xnew)
+
+plt.plot(xnew,power_smooth)
+        """
+
+        smooth_factor = 1.0
+
         if self.plot_first:
             # initialization of plotting objects
             self.plot_first = False
@@ -251,12 +266,20 @@ class Point(object):
             we initialize the time line, with a linear distribution of times to erase irregular starting times
             """
             time_line = np.linspace(0.0, 5.0, self.nbins)
-            self.xline, = self.ax.plot(time_line, self.xs, '{}-'.format(self.colorx))
-            self.yline, = self.ax.plot(time_line, self.ys, '{}-'.format(self.colory))
+
+            xs_smoothed = gaussian_filter1d(self.xs, sigma=smooth_factor)
+            ys_smoothed = gaussian_filter1d(self.ys, sigma=smooth_factor)
+
+            self.xline, = self.ax.plot(time_line, xs_smoothed, '{}-'.format(self.colorx), label=self.name + '_x')
+            self.yline, = self.ax.plot(time_line, ys_smoothed, '{}-'.format(self.colory), label=self.name + '_y')
+            self.ax.legend(loc='upper left', shadow=True)
         else:
+            xs_smoothed = gaussian_filter1d(self.xs, sigma=smooth_factor)
+            ys_smoothed = gaussian_filter1d(self.ys, sigma=smooth_factor)
+
             self.xline.set_xdata(time_line)
-            self.xline.set_ydata(self.xs)
+            self.xline.set_ydata(xs_smoothed)
             self.yline.set_xdata(time_line)
-            self.yline.set_ydata(self.ys)
+            self.yline.set_ydata(ys_smoothed)
 
         plt.pause(0.001)
