@@ -164,10 +164,15 @@ right=  x -> min=76 max=1749 y -> min=-43 max=1440 vx -> min=-205 max=344 vy -> 
         right = jointPoints[PyKinectV2.JointType_HandRight]
         left = jointPoints[PyKinectV2.JointType_HandLeft]
 
+        """
+        Since we have the scaling factors, perhaps we don't need the 1000 offset on y and the negative inversion
+        ... this has to be checked
+        """
         t = time.time()
         t, x1, y1, _, _ = self.right.set(t, left.x, 1000 - left.y)
         t, x2, y2, _, _ = self.left.set(t, right.x, 1000 - right.y)
 
+        # We store raw data, since ranges are saved at top of the data file
         self.store(t - self.t0, x1, y1, x2, y2)
 
         self.left.plot()

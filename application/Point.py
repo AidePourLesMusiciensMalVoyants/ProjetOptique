@@ -273,7 +273,7 @@ class Point(object):
         t0 = self.ts[0]
         time_line = [(t - t0) for t in self.ts]
 
-        smooth_factor = 1.0
+        smoothing_factor = 1.0
 
         if self.plot_first:
             # initialization of plotting objects
@@ -284,17 +284,23 @@ class Point(object):
             """
             time_line = np.linspace(0.0, self.nbins/20.0, self.nbins)
 
-            #xs_smoothed = gaussian_filter1d(self.xs, sigma=smooth_factor)
-            #ys_smoothed = gaussian_filter1d(self.ys, sigma=smooth_factor)
+            """
+            to initialize the data graphs, we setup a linear distribution from min to max
+            and we position x & y separately according to the "order" specification
+            """
+            x_initializer = np.linspace(0.0,
+                                        self.scale_factor,
+                                        self.nbins)
+            y_initializer =  np.linspace(2*self.scale_factor*self.order + self.scale_factor,
+                                         2*self.scale_factor*self.order + 2*self.scale_factor,
+                                         self.nbins)
 
-            self.xline, = self.ax.plot(time_line, np.linspace(0.0, self.scale_factor, self.nbins), '{}-'.format(self.colorx), label=self.name + '_x')
-            self.yline, = self.ax.plot(time_line, np.linspace(2*self.scale_factor*self.order + self.scale_factor,
-                                                              2*self.scale_factor*self.order + 2*self.scale_factor,
-                                                              self.nbins), '{}-'.format(self.colory), label=self.name + '_y')
+            self.xline, = self.ax.plot(time_line, x_initializer, '{}-'.format(self.colorx), label=self.name + '_x')
+            self.yline, = self.ax.plot(time_line, y_initializer, '{}-'.format(self.colory), label=self.name + '_y')
             self.ax.legend(loc='upper left', shadow=True)
         else:
-            xs_smoothed = gaussian_filter1d(self.xs, sigma=smooth_factor)
-            ys_smoothed = gaussian_filter1d(self.ys, sigma=smooth_factor)
+            xs_smoothed = gaussian_filter1d(self.xs, sigma=smoothing_factor)
+            ys_smoothed = gaussian_filter1d(self.ys, sigma=smoothing_factor)
 
             self.xline.set_xdata(time_line)
             # self.xline.set_ydata(self.xs)
