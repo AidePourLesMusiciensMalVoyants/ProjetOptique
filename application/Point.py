@@ -15,8 +15,9 @@ Compute the speed (vx,vy) = (dx/dt, dy/dt)
 May plot the evolution of x & y on a dynamic plot
 """
 class Point(object):
-    def __init__(self, name, rangex=None, rangey=None, rangev=None):
+    def __init__(self, name, order):
         self.name = name            # general key
+        self.order = order
         self.first = True           # general start marker
         self.ranges = dict()        # declared or computed ranges
 
@@ -51,13 +52,26 @@ class Point(object):
         self.xline = None           # graphical objects
         self.yline = None
 
-        if not rangex is None:
-            self.ranges["x"] = {'min': rangex[0], 'max': rangex[1]}
-        if not rangey is None:
-            self.ranges["y"] = {'min': rangey[0], 'max': rangey[1]}
-        if not rangev is None:
-            self.ranges["vx"] = {'min': rangev[0], 'max': rangev[1]}
-            self.ranges["vy"] = {'min': rangev[0], 'max': rangev[1]}
+        self.min_x = None
+        self.max_x = None
+        self.min_y = None
+        self.max_y = None
+        self.min_v = None
+        self.max_v = None
+
+        self.scale_factor = 2048.0
+
+    def set_x_range(self, min_x, max_x):
+        self.min_x = min_x
+        self.max_x = max_x
+
+    def set_y_range(self, min_y, max_y):
+        self.min_y = min_y
+        self.max_y = max_y
+
+    def set_v_range(self, min_v, max_v):
+        self.min_v = min_v
+        self.max_v = max_v
 
     def set(self, t, x, y):
         """
@@ -81,6 +95,11 @@ class Point(object):
         dx = x - self.prevx
         dy = y - self.prevy
 
+        if math.isinf(x):
+            print("x=", x, " y=", y)
+        if math.isinf(y):
+            print("x=", x, " y=", y)
+
         try:
             self.vx = dx/dt
             self.vy = dy/dt
@@ -88,24 +107,18 @@ class Point(object):
             self.vx = 0.0
             self.vy = 0.0
 
-        # print("set>>> t={} x={} y={} vx={} vy={}".format(t, x, y, self.vx, self.vy))
+        self.scale()
 
-        self.range()
-        text = self.print_range()
-        # print("ranges ", self.name, text)
+        # print("set>>> t={} x={} y={} vx={} vy={}".format(t, x, y, self.vx, self.vy))
 
         return self.t, self.x, self.y, self.vx, self.vy
 
 
     def range(self):
         """
-        Compute the range when not specified at creation
-        :return:
+        Adapt the range
         """
         for key in ["x", "y", "vx", "vy"]:
-            if not key in self.ranges:
-                self.ranges[key] = {'min': None, 'max': None}
-
             if key == "x":
                 value = self.x
             elif key == "y":
@@ -120,21 +133,22 @@ class Point(object):
             except:
                 continue
 
-            r = self.ranges[key]
-
-            if (r['min'] is None) or (value < r['min']):
-                r['min'] = value
-            if (r['max'] is None) or (value > r['max']):
-                r['max'] = value
+            if key == "x":
+                if self.min_x is None or value < self.min_x: self.min_x = value
+                if self.max_x is None or value > self.max_x: self.max_x = value
+            elif key == "y":
+                if self.min_y is None or value < self.min_y: self.min_y = value
+                if self.max_y is None or value > self.max_y: self.max_y = value
+            elif key == "vx"or key == "vy":
+                if self.min_v is None or value < self.min_v: self.min_v = value
+                if self.max_v is None or value > self.max_v: self.max_v = value
 
     def print_range(self):
         t = ""
-        for key in ["x", "y", "vx", "vy"]:
-            if not key in self.ranges:
-                self.ranges[key] = {'min': None, 'max': None}
-            r = self.ranges[key]
 
-            t += " {} -> min={} max={}".format(key, r['min'], r['max'])
+        t += " x=[{} .. {}] ".format(self.min_x, self.max_x)
+        t += " y=[{} .. {}] ".format(self.min_y, self.max_y)
+        t += " v=[{} .. {}] ".format(self.min_v, self.max_v)
         return t
 
     def scale(self):
@@ -142,14 +156,14 @@ class Point(object):
         Compute scaled values according to range
         """
         def compute_scale(value, vmin, vmax):
-            if value < vmin: value = vmin
-            if value > vmax: value = vmax
+            if not vmin is None and value < vmin: value = vmin
+            if not vmax is None and value > vmax: value = vmax
             scaled = 0
             try:
                 value = int(value)
                 a = float(value - vmin)
                 b = float(vmax - vmin)
-                scaled = int(float(a/b)*256)
+                scaled = int(float(a/b) * self.scale_factor)
             except:
                 pass
             return scaled
@@ -162,15 +176,27 @@ class Point(object):
 
             if key == "x":
                 value = self.x
+                vmin = self.min_x
+                vmax = self.max_x
             elif key == "y":
                 value = self.y
+                vmin = self.min_y
+                vmax = self.max_y
             elif key == "vx":
                 value = self.vx
+                vmin = self.min_v
+                vmax = self.max_v
             elif key == "vy":
                 value = self.vy
+                vmin = self.min_v
+                vmax = self.max_v
+
+            if value is math.inf or value is None or value is math.nan:
+                value = None
+                print("infini")
 
             if not (value is None or value is math.nan):
-                svalue = compute_scale(value, r['min'], r['max'])
+                svalue = compute_scale(value, vmin, vmax)
 
                 if key == "x":
                     self.sx = svalue
@@ -198,8 +224,9 @@ class Point(object):
         self.colory = colory
 
         # initialize default extrema according to range
-        self.set(time.time(), self.ranges["x"]["min"], self.ranges["y"]["min"])
-        self.set(time.time(), self.ranges["x"]["max"], self.ranges["y"]["max"])
+        if 'x' in self.ranges and 'y' in self.ranges:
+            self.set(time.time(), self.min_x, self.min_y)
+            self.set(time.time(), self.max_x, self.max_y)
 
     def plot(self):
         """
@@ -217,8 +244,8 @@ class Point(object):
             return
 
         t = self.t - self.origin
-        x = self.x
-        y = self.y
+        x = self.sx + 2*self.scale_factor*self.order
+        y = self.sy + 2*self.scale_factor*self.order + self.scale_factor
 
         if self.plot_index < self.nbins:
             # just filling the buffer. No real plot
@@ -255,21 +282,25 @@ class Point(object):
             """
             we initialize the time line, with a linear distribution of times to erase irregular starting times
             """
-            time_line = np.linspace(0.0, 5.0, self.nbins)
+            time_line = np.linspace(0.0, self.nbins/20.0, self.nbins)
 
-            xs_smoothed = gaussian_filter1d(self.xs, sigma=smooth_factor)
-            ys_smoothed = gaussian_filter1d(self.ys, sigma=smooth_factor)
+            #xs_smoothed = gaussian_filter1d(self.xs, sigma=smooth_factor)
+            #ys_smoothed = gaussian_filter1d(self.ys, sigma=smooth_factor)
 
-            self.xline, = self.ax.plot(time_line, xs_smoothed, '{}-'.format(self.colorx), label=self.name + '_x')
-            self.yline, = self.ax.plot(time_line, ys_smoothed, '{}-'.format(self.colory), label=self.name + '_y')
+            self.xline, = self.ax.plot(time_line, np.linspace(0.0, self.scale_factor, self.nbins), '{}-'.format(self.colorx), label=self.name + '_x')
+            self.yline, = self.ax.plot(time_line, np.linspace(2*self.scale_factor*self.order + self.scale_factor,
+                                                              2*self.scale_factor*self.order + 2*self.scale_factor,
+                                                              self.nbins), '{}-'.format(self.colory), label=self.name + '_y')
             self.ax.legend(loc='upper left', shadow=True)
         else:
             xs_smoothed = gaussian_filter1d(self.xs, sigma=smooth_factor)
             ys_smoothed = gaussian_filter1d(self.ys, sigma=smooth_factor)
 
             self.xline.set_xdata(time_line)
+            # self.xline.set_ydata(self.xs)
             self.xline.set_ydata(xs_smoothed)
             self.yline.set_xdata(time_line)
+            # self.yline.set_ydata(self.ys)
             self.yline.set_ydata(ys_smoothed)
 
-        plt.pause(0.001)
+        plt.pause(0.0001)

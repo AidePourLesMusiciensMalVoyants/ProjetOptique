@@ -6,10 +6,10 @@ Socket for communication with bridge to Arduino
 """
 
 class Bridge(object):
-    self.OK = 0
-    self.DISCONNEXION = 1
-    self.QUIT = 2
-    self.ERROR = 3
+    OK = 0
+    DISCONNEXION = 1
+    QUIT = 2
+    ERROR = 3
 
     def __init__(self):
         self.my_socket = None
@@ -42,7 +42,7 @@ class Bridge(object):
     Sending data to the Bridge to Arduino
     """
 
-    def send_data(x1, y1, x2, y2):
+    def send_data(self, x1, y1, x2, y2):
         if self.my_socket is None:
             status = self.connect()
             if status != self.OK:

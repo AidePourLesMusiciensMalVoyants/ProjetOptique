@@ -1,10 +1,17 @@
+
+
+import sys
+sys.path.append('..')
+
+
 from pykinect2 import PyKinectV2
 from pykinect2.PyKinectV2 import *
 from pykinect2 import PyKinectRuntime
 
 import ctypes
 import pygame
-import sys
+import random
+import signal
 
 from Point import *
 from Bridge import *
@@ -25,6 +32,14 @@ SKELETON_COLORS = [pygame.color.THECOLORS["red"],
                    pygame.color.THECOLORS["purple"],
                    pygame.color.THECOLORS["yellow"],
                    pygame.color.THECOLORS["violet"]]
+
+
+stopped = False
+
+def signal_handler(sig, frame):
+    global stopped
+    print('You pressed Ctrl+C!')
+    stopped = True
 
 
 class BodyGameRuntime(object):
@@ -62,13 +77,20 @@ class BodyGameRuntime(object):
         self.t = time.time()
 
         """
-        x [0 .. 2000]
-        y [0 .. 1500]
-        vx [-200000 .. 200000]
+        x = [0 .. 1800]
+        y = [-50 .. 1500]
+left=   x -> min=27 max=957  y -> min=9   max=1439 vx -> min=-17  max=119 vy -> min=-68    max=10816 
+right=  x -> min=76 max=1749 y -> min=-43 max=1440 vx -> min=-205 max=344 vy -> min=-26526 max=0
         """
 
-        self.left = Point("left", (0, 2000), (0, 2000), (-200000, 200000))
-        self.right = Point("right", (0, 2000), (0, 2000), (-200000, 200000))
+        self.left = Point("right", 0)
+        self.left.set_x_range(0, 2200)
+        self.left.set_y_range(-300, 1300)
+        self.left.set_v_range(-200000, 200000)
+        self.right = Point("left", 1)
+        self.right.set_x_range(0, 2200)
+        self.right.set_y_range(-300, 1300)
+        self.right.set_v_range(-200000, 200000)
 
         plt.ion()
         plot_fig = plt.figure()
@@ -78,6 +100,16 @@ class BodyGameRuntime(object):
         self.right.start_plotting(plot_fig, plot_ax, colorx="b", colory="y")
 
         self.bridge = Bridge()
+        self.data_store = None
+
+    def store(self, t, x1, y1, x2, y2):
+        if self.data_store is None:
+            self.data_store = open('data.csv', 'w+')
+            self.data_store.write("{}, {}, {}, {}\n".format(self.left.min_x, self.left.max_x,
+                                                            self.right.min_y, self.right.max_y))
+
+        self.data_store.write("{}, {}, {}, {}, {}\n".format(t, x1, y1, x2, y2))
+
 
     def draw_body_bone(self, joints, jointPoints, depthPoints, color, joint0, joint1):
 
@@ -133,11 +165,10 @@ class BodyGameRuntime(object):
         left = jointPoints[PyKinectV2.JointType_HandLeft]
 
         t = time.time()
-        self.left.set(t, left.x, 1000 - left.y)
-        self.right.set(t, right.x, 1000 - right.y)
+        t, x1, y1, _, _ = self.right.set(t, left.x, 1000 - left.y)
+        t, x2, y2, _, _ = self.left.set(t, right.x, 1000 - right.y)
 
-        self.left.scale()
-        self.right.scale()
+        self.store(t - self.t0, x1, y1, x2, y2)
 
         self.left.plot()
         self.right.plot()
@@ -154,7 +185,7 @@ class BodyGameRuntime(object):
                                                                                         ))
         """
 
-        status = self.bridge.send_data(self.left.sx, self.left.sy, self.right.sx, self.right.sy)
+        # status = self.bridge.send_data(self.left.sx, self.left.sy, self.right.sx, self.right.sy)
 
         """
         # Right Leg
@@ -180,15 +211,19 @@ class BodyGameRuntime(object):
 
     def run(self):
         quit = False
-        status = OK
+        status = self.bridge.OK
 
         # -------- Main Program Loop -----------
         # print("run")
         while not self._done:
+            if stopped:
+                break
+
             # --- Main event loop
             # print("run")
             for event in pygame.event.get(): # User did something
                 if event.type == pygame.QUIT: # If user clicked close
+                    print("stopping")
                     self._done = True # Flag that we are done so we exit this loop
 
                 elif event.type == pygame.VIDEORESIZE: # window resized
@@ -221,6 +256,29 @@ class BodyGameRuntime(object):
                     joint_points = self._kinect.body_joints_to_color_space(joints)
                     depth_points = self._kinect.body_joints_to_depth_space(joints)
                     self.draw_body(joints, joint_points, depth_points, SKELETON_COLORS[i])
+            else:
+                pass
+
+                """
+                print('simulation')
+                t = time.time() - self.t0
+                x1 = random.random()*2000
+                y1 = random.random()*2000
+                x2 = random.random()*2000
+                y2 = random.random()*2000
+
+                t, x1, y1, _, _ = self.left.set(t, x1, y1)
+                t, x2, y2, _, _ = self.right.set(t, x2, y2)
+
+                self.store(t, x1, y1, x2, y2)
+
+                self.left.scale()
+                self.right.scale()
+
+                self.left.plot()
+                self.right.plot()
+                time.sleep(random.random()*0.1)
+                """
 
             # --- copy back buffer surface pixels to the screen, resize it if needed and keep aspect ratio
             # --- (screen size may be different from Kinect's color frame size) 
@@ -237,12 +295,15 @@ class BodyGameRuntime(object):
             # --- Limit to 60 frames per second
             self._clock.tick(60)
 
+        self.data_store.close()
         # Close our Kinect sensor, close the window and quit.
         self._kinect.close()
         pygame.quit()
 
 
 __main__ = "Kinect v2 Body Game"
+
+signal.signal(signal.SIGINT, signal_handler)
 game = BodyGameRuntime();
 game.run();
 
