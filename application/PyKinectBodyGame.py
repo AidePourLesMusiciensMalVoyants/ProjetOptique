@@ -83,21 +83,31 @@ left=   x -> min=27 max=957  y -> min=9   max=1439 vx -> min=-17  max=119 vy -> 
 right=  x -> min=76 max=1749 y -> min=-43 max=1440 vx -> min=-205 max=344 vy -> min=-26526 max=0
         """
 
-        self.left = Point("right", 0)
-        self.left.set_x_range(0, 2200)
-        self.left.set_y_range(-300, 1300)
-        self.left.set_v_range(-200000, 200000)
-        self.right = Point("left", 1)
-        self.right.set_x_range(0, 2200)
-        self.right.set_y_range(-300, 1300)
-        self.right.set_v_range(-200000, 200000)
-
         plt.ion()
         plot_fig = plt.figure()
-        plot_ax = plot_fig.add_subplot(111)
 
-        self.left.start_plotting(plot_fig, plot_ax, colorx="r", colory="g")
-        self.right.start_plotting(plot_fig, plot_ax, colorx="b", colory="y")
+        # self.plotters = {}
+
+        # for i in range(6):
+        if True:
+            plot_ax = plot_fig.add_subplot(2,3,i + 1)
+
+            plotter = Plotter(plot_fig, plot_ax)
+
+            left = plotter.add_point("left", 1, colorx="r", colory="g")
+            left.set_x_range(0, 2200)
+            left.set_y_range(-300, 1300)
+            left.set_v_range(-200000, 200000)
+
+            right = plotter.add_point("right", 0, colorx="b", colory="y")
+            right.set_x_range(0, 2200)
+            right.set_y_range(-300, 1300)
+            right.set_v_range(-200000, 200000)
+
+            plotter.start_plotting()
+
+            # self.plotters[i] = plotter
+            self.plotter = plotter
 
         self.bridge = Bridge()
         self.data_store = None
@@ -133,7 +143,7 @@ right=  x -> min=76 max=1749 y -> min=-43 max=1440 vx -> min=-205 max=344 vy -> 
         except: # need to catch it due to possible invalid positions (with inf)
             pass
 
-    def draw_body(self, joints, jointPoints, depthPoints, color):
+    def draw_body(self, joints, jointPoints, depthPoints, body, color):
         # Torso
         """
         self.draw_body_bone(joints, jointPoints, depthPoints, color, PyKinectV2.JointType_Head, PyKinectV2.JointType_Neck);
@@ -169,14 +179,15 @@ right=  x -> min=76 max=1749 y -> min=-43 max=1440 vx -> min=-205 max=344 vy -> 
         ... this has to be checked
         """
         t = time.time()
-        t, x1, y1, _, _ = self.right.set(t, left.x, 1000 - left.y)
-        t, x2, y2, _, _ = self.left.set(t, right.x, 1000 - right.y)
+        #t, x1, y1, _, _ = self.right.set(t, left.x, 1000 - left.y)
+        #t, x2, y2, _, _ = self.left.set(t, right.x, 1000 - right.y)
+
+        # self.plotters[body].plot(t - self.t0, [left.x, right.x], [1000 - left.y, 1000 - right.y])
+        self.plotter.plot(t - self.t0, [left.x, right.x], [1000 - left.y, 1000 - right.y])
 
         # We store raw data, since ranges are saved at top of the data file
-        self.store(t - self.t0, x1, y1, x2, y2)
+        # self.store(t - self.t0, x1, y1, x2, y2)
 
-        self.left.plot()
-        self.right.plot()
 
         """
         print("Positions>>> rx={} ry={} lx={} ly={} rvx={} rvy={} lvx={} lvy={}".format(self.left.sx,
@@ -218,6 +229,8 @@ right=  x -> min=76 max=1749 y -> min=-43 max=1440 vx -> min=-205 max=344 vy -> 
         quit = False
         status = self.bridge.OK
 
+        body = None
+
         # -------- Main Program Loop -----------
         # print("run")
         while not self._done:
@@ -258,9 +271,11 @@ right=  x -> min=76 max=1749 y -> min=-43 max=1440 vx -> min=-205 max=344 vy -> 
                     joints = body.joints 
                     # convert joint coordinates to color space
 
+                    print("body=", i)
+
                     joint_points = self._kinect.body_joints_to_color_space(joints)
                     depth_points = self._kinect.body_joints_to_depth_space(joints)
-                    self.draw_body(joints, joint_points, depth_points, SKELETON_COLORS[i])
+                    self.draw_body(joints, joint_points, depth_points, i, SKELETON_COLORS[i])
             else:
                 pass
 

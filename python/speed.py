@@ -15,26 +15,29 @@ def func():
 
 def using_points():
     origin = time.time()
-    p = Point("p", rangex=[0.0, 1.0], rangey=[1.0, 2.0])
 
     plt.ion()
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    p.start_plotting(fig, ax)
+    plotter = Plotter(fig, ax)
+
+    p = plotter.add_point("ppp")
+
+    p.set_x_range(0, 2200)
+    p.set_y_range(-300, 1300)
+    p.set_v_range(-200000, 200000)
+
+    plotter.start_plotting()
 
     while True:
-
-
-        x = random.random()
-        y = random.random() + 1
-        t = time.time() - origin
+        t = time.time()
+        x = random.random()*2200
+        y = random.random()*1600 - 300
 
         # print("t=", t)
 
-        t, x, y, vx, vy = p.set(t, x, y)
-
-        p.plot()
+        plotter.plot(t, [x], [y])
 
         # time.sleep(random.random()*0.1)
 

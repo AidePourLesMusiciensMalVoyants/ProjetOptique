@@ -7,6 +7,131 @@ from scipy.interpolate import make_interp_spline, BSpline
 from scipy.ndimage.filters import gaussian_filter1d
 
 
+pt = None
+px = None
+py = None
+
+class PlotLine(object):
+    def __init__(self, nbins, point, order, colorx="r", colory="g"):
+        self.nbins = nbins
+        self.point = point
+        self.order = order
+        self.colorx = colorx
+        self.colory = colory
+        self.xline = None
+        self.yline = None
+
+        self.xs = []
+        self.ys = []
+
+    def set_plot_lines(self, xline, yline):
+        self.xline = xline
+        self.yline = yline
+
+    def put(self, x, y):
+        if len(self.xs) == self.nbins:
+            self.xs.pop(0)
+            self.ys.pop(0)
+        self.xs.append(x)
+        self.ys.append(y)
+
+
+class Plotter(object):
+    def __init__(self, fig, ax):
+        self.nbins = 200.
+        self.scale_factor = 2048.
+        self.fig = fig
+        self.ax = ax
+        self.lines = []
+        self.origin = time.time()
+        self.plotting = False
+        self.ts = []
+        self.started = False
+
+
+    def add_point(self, name, order=0, colorx="r", colory="g"):
+        point = Point(name, self)
+        line = PlotLine(self.nbins, point, order, colorx, colory)
+        self.lines.append(line)
+        return point
+
+    def start_plotting(self):
+        global px, py
+
+        print("start_plotting")
+
+        time_line = np.linspace(0.0, self.nbins / 20.0, self.nbins)
+
+        """
+        to initialize the data graphs, we setup a linear distribution from min to max
+        and we position x & y separately according to the "order" specification
+        """
+        for line in self.lines:
+            offset = 2 * self.scale_factor * line.order
+            x_min = offset
+            x_max = offset + self.scale_factor
+            x_initializer = np.linspace(x_min, x_max, self.nbins)
+
+            y_min = offset + self.scale_factor
+            y_max = offset + 2 * self.scale_factor
+            y_initializer = np.linspace(y_min, y_max, self.nbins)
+
+            px, = self.ax.plot(time_line, x_initializer, '{}-'.format(line.colorx), label=line.point.name + '_x')
+            py, = self.ax.plot(time_line, y_initializer, '{}-'.format(line.colory), label=line.point.name + '_y')
+
+            line.set_plot_lines(px, py)
+
+        self.ax.legend(loc='upper left', shadow=True)
+
+        self.plotting = True
+
+    def plot(self, t, xs, ys):
+        if not self.plotting:
+            return
+
+        t = t - self.origin
+
+        if len(self.ts) == self.nbins:
+            self.ts.pop(0)
+
+        self.ts.append(t)
+
+        for i, line in enumerate(self.lines):
+            x = xs[i]
+            y = ys[i]
+            t, x, y, _, _ = line.point.set(t, x, y)
+            # print(x, y)
+            line.put(x, y)
+
+        if self.started:
+            # xs_smoothed = gaussian_filter1d(self.xs, sigma=smoothing_factor)
+            # ys_smoothed = gaussian_filter1d(self.ys, sigma=smoothing_factor)
+
+            ttt = [t - self.ts[0] for t in self.ts]
+
+            for line in self.lines:
+                offsetx = 2 * self.scale_factor * line.order
+                offsety = 2 * self.scale_factor * line.order + self.scale_factor
+
+                line.xline.set_xdata(ttt)
+                line.xline.set_ydata([x + offsetx for x in line.xs])
+
+                line.yline.set_xdata(ttt)
+
+                line.yline.set_ydata([y + offsety for y in line.ys])
+
+                self.fig.gca().relim()
+                self.fig.gca().autoscale_view()
+                self.fig.canvas.draw()
+                self.fig.canvas.flush_events()
+
+        elif len(self.ts) == self.nbins:
+            self.started = True
+
+        # time.sleep(0.1)
+
+
+
 """
 Class Point 
 Handle coordinates of a point in space
@@ -15,11 +140,9 @@ Compute the speed (vx,vy) = (dx/dt, dy/dt)
 May plot the evolution of x & y on a dynamic plot
 """
 class Point(object):
-    def __init__(self, name, order):
+    def __init__(self, name, plotter):
         self.name = name            # general key
-        self.order = order
         self.first = True           # general start marker
-        self.ranges = dict()        # declared or computed ranges
 
         self.t = None               # acquisition
         self.x = None
@@ -38,19 +161,7 @@ class Point(object):
         self.prevy = None
 
         # plotting the point data
-        self.nbins = 500
-        self.ts = [0] * self.nbins  # buffered data for plotting
-        self.xs = [0] * self.nbins
-        self.ys = [0] * self.nbins
-
-        self.plotting = False       # state for plotting
-        self.origin = None          # origin of acquisition
-        self.plot_index = None      # current position in plotting buffer
-        self.fig = None             # matplotlib variables
-        self.ax = None
-        self.plot_first = True
-        self.xline = None           # graphical objects
-        self.yline = None
+        self.nbins = plotter.nbins
 
         self.min_x = None
         self.max_x = None
@@ -59,7 +170,7 @@ class Point(object):
         self.min_v = None
         self.max_v = None
 
-        self.scale_factor = 2048.0
+        self.scale_factor = plotter.scale_factor
 
     def set_x_range(self, min_x, max_x):
         self.min_x = min_x
@@ -111,7 +222,7 @@ class Point(object):
 
         # print("set>>> t={} x={} y={} vx={} vy={}".format(t, x, y, self.vx, self.vy))
 
-        return self.t, self.x, self.y, self.vx, self.vy
+        return self.t, self.sx, self.sy, self.svx, self.svy
 
 
     def range(self):
@@ -169,11 +280,6 @@ class Point(object):
             return scaled
 
         for key in ["x", "y", "vx", "vy"]:
-            if not key in self.ranges:
-                self.ranges[key] = {'min': None, 'max': None}
-
-            r = self.ranges[key]
-
             if key == "x":
                 value = self.x
                 vmin = self.min_x
@@ -207,106 +313,3 @@ class Point(object):
                 elif key == "vy":
                     self.svy = svalue
 
-    def start_plotting(self, fig, ax, colorx="r", colory="g"):
-        """
-        Initialize the plotting
-        """
-        self.plotting = True
-        self.origin = time.time()
-        self.plot_index = 0
-        self.fig = fig
-        self.ax = ax
-
-        self.plot_first = True
-        self.xline = None
-        self.yline = None
-        self.colorx = colorx
-        self.colory = colory
-
-        # initialize default extrema according to range
-        if 'x' in self.ranges and 'y' in self.ranges:
-            self.set(time.time(), self.min_x, self.min_y)
-            self.set(time.time(), self.max_x, self.max_y)
-
-    def plot(self):
-        """
-        Dynamic plotting of acquired values
-        1)
-            fill in one buffer of values before really plotting
-        2)
-            once the buffer is filled, coming values are appended at end of cyclic buffer
-
-        At first real plot action, plotting objects are created and time line is created linear
-        Then for every plot plotting objects are refreshed from real scaled data
-
-        """
-        if not self.plotting:
-            return
-
-        t = self.t - self.origin
-        x = self.sx + 2*self.scale_factor*self.order
-        y = self.sy + 2*self.scale_factor*self.order + self.scale_factor
-
-        if self.plot_index < self.nbins:
-            # just filling the buffer. No real plot
-            self.ts[self.plot_index] = t
-            self.xs[self.plot_index] = x
-            self.ys[self.plot_index] = y
-
-            self.plot_index += 1
-
-            self.i = 0
-
-            return
-
-        # now the buffer is filled , we inject new data to the buffer as a cyclic buffer
-        self.i += 1
-
-        self.ts.pop(0)
-        self.xs.pop(0)
-        self.ys.pop(0)
-        self.ts.append(t)
-        self.xs.append(x)
-        self.ys.append(y)
-
-        # synchronize times to moving origin
-        t0 = self.ts[0]
-        time_line = [(t - t0) for t in self.ts]
-
-        smoothing_factor = 1.0
-
-        if self.plot_first:
-            # initialization of plotting objects
-            self.plot_first = False
-
-            """
-            we initialize the time line, with a linear distribution of times to erase irregular starting times
-            """
-            time_line = np.linspace(0.0, self.nbins/20.0, self.nbins)
-
-            """
-            to initialize the data graphs, we setup a linear distribution from min to max
-            and we position x & y separately according to the "order" specification
-            """
-            x_initializer = np.linspace(0.0,
-                                        self.scale_factor,
-                                        self.nbins)
-            y_initializer =  np.linspace(2*self.scale_factor*self.order + self.scale_factor,
-                                         2*self.scale_factor*self.order + 2*self.scale_factor,
-                                         self.nbins)
-
-            self.xline, = self.ax.plot(time_line, x_initializer, '{}-'.format(self.colorx), label=self.name + '_x')
-            self.yline, = self.ax.plot(time_line, y_initializer, '{}-'.format(self.colory), label=self.name + '_y')
-            self.ax.legend(loc='upper left', shadow=True)
-        else:
-            xs_smoothed = gaussian_filter1d(self.xs, sigma=smoothing_factor)
-            ys_smoothed = gaussian_filter1d(self.ys, sigma=smoothing_factor)
-
-            self.xline.set_xdata(time_line)
-            # self.xline.set_ydata(self.xs)
-            self.xline.set_ydata(xs_smoothed)
-            self.yline.set_xdata(time_line)
-            # self.yline.set_ydata(self.ys)
-            self.yline.set_ydata(ys_smoothed)
-
-        plt.pause(0.0001)
