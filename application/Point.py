@@ -96,10 +96,22 @@ class Plotter(object):
 
         self.ts.append(t)
 
+        x1 = None
+        y1 = None
+        x2 = None
+        y2 = None
+
         for i, line in enumerate(self.lines):
             x = xs[i]
             y = ys[i]
             t, x, y, _, _ = line.point.set(t, x, y)
+            if i == 0:
+                x1 = x
+                y1 = y
+            if i == 1:
+                x2 = x
+                y2 = y
+
             # print(x, y)
             line.put(x, y)
 
@@ -128,7 +140,7 @@ class Plotter(object):
         elif len(self.ts) == self.nbins:
             self.started = True
 
-        # time.sleep(0.1)
+        return t, x1, y1, x2, y2
 
 
 
@@ -206,10 +218,12 @@ class Point(object):
         dx = x - self.prevx
         dy = y - self.prevy
 
+        """
         if math.isinf(x):
             print("x=", x, " y=", y)
         if math.isinf(y):
             print("x=", x, " y=", y)
+        """
 
         try:
             self.vx = dx/dt

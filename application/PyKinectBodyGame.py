@@ -87,27 +87,27 @@ right=  x -> min=76 max=1749 y -> min=-43 max=1440 vx -> min=-205 max=344 vy -> 
         plot_fig = plt.figure()
 
         # self.plotters = {}
-
         # for i in range(6):
-        if True:
-            plot_ax = plot_fig.add_subplot(2,3,i + 1)
+        # plot_ax = plot_fig.add_subplot(2,3,i + 1)
 
-            plotter = Plotter(plot_fig, plot_ax)
+        plot_ax = plot_fig.add_subplot(1, 1, 1)
 
-            left = plotter.add_point("left", 1, colorx="r", colory="g")
-            left.set_x_range(0, 2200)
-            left.set_y_range(-300, 1300)
-            left.set_v_range(-200000, 200000)
+        plotter = Plotter(plot_fig, plot_ax)
 
-            right = plotter.add_point("right", 0, colorx="b", colory="y")
-            right.set_x_range(0, 2200)
-            right.set_y_range(-300, 1300)
-            right.set_v_range(-200000, 200000)
+        left = plotter.add_point("left", 1, colorx="r", colory="g")
+        left.set_x_range(0, 2200)
+        left.set_y_range(-300, 1300)
+        left.set_v_range(-200000, 200000)
 
-            plotter.start_plotting()
+        right = plotter.add_point("right", 0, colorx="b", colory="y")
+        right.set_x_range(0, 2200)
+        right.set_y_range(-300, 1300)
+        right.set_v_range(-200000, 200000)
 
-            # self.plotters[i] = plotter
-            self.plotter = plotter
+        plotter.start_plotting()
+
+        # self.plotters[i] = plotter
+        self.plotter = plotter
 
         self.bridge = Bridge()
         self.data_store = None
@@ -115,8 +115,8 @@ right=  x -> min=76 max=1749 y -> min=-43 max=1440 vx -> min=-205 max=344 vy -> 
     def store(self, t, x1, y1, x2, y2):
         if self.data_store is None:
             self.data_store = open('data.csv', 'w+')
-            self.data_store.write("{}, {}, {}, {}\n".format(self.left.min_x, self.left.max_x,
-                                                            self.right.min_y, self.right.max_y))
+            self.data_store.write("{}, {}, {}, {}\n".format(0, 2200,
+                                                            -300, 1300))
 
         self.data_store.write("{}, {}, {}, {}, {}\n".format(t, x1, y1, x2, y2))
 
@@ -182,11 +182,10 @@ right=  x -> min=76 max=1749 y -> min=-43 max=1440 vx -> min=-205 max=344 vy -> 
         #t, x1, y1, _, _ = self.right.set(t, left.x, 1000 - left.y)
         #t, x2, y2, _, _ = self.left.set(t, right.x, 1000 - right.y)
 
-        # self.plotters[body].plot(t - self.t0, [left.x, right.x], [1000 - left.y, 1000 - right.y])
-        self.plotter.plot(t - self.t0, [left.x, right.x], [1000 - left.y, 1000 - right.y])
+        t, x1, y1, x2, y2 = self.plotter.plot(t, [left.x, right.x], [1000 - left.y, 1000 - right.y])
 
         # We store raw data, since ranges are saved at top of the data file
-        # self.store(t - self.t0, x1, y1, x2, y2)
+        self.store(t, x1, y1, x2, y2)
 
 
         """
@@ -271,7 +270,7 @@ right=  x -> min=76 max=1749 y -> min=-43 max=1440 vx -> min=-205 max=344 vy -> 
                     joints = body.joints 
                     # convert joint coordinates to color space
 
-                    print("body=", i)
+                    # print("body=", i)
 
                     joint_points = self._kinect.body_joints_to_color_space(joints)
                     depth_points = self._kinect.body_joints_to_depth_space(joints)

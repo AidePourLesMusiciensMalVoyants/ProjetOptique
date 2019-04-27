@@ -21,13 +21,16 @@ def using_points():
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
+    plotter = Plotter(fig, ax)
     pv_end = '(.+)'
     pv_in = '([^,]+)[,]'
 
     pv_ranges = pv_in*3 + pv_end + '$'
     pv_data = pv_in*4 + pv_end + '$'
 
-    with open("data.csv", "r") as f:
+    t0 = time.time()
+
+    with open("../application/data.csv", "r") as f:
         lines = f.readlines()
         first = True
         for line in lines:
@@ -43,15 +46,15 @@ def using_points():
                 min_y = float(m[3])
                 max_y = float(m[4])
 
-                p1 = Point("p1", 0)
-                p1.set_x_range(min_x, max_x)
-                p1.set_y_range(min_y, max_y)
-                p2 = Point("p2", 1)
-                p2.set_x_range(min_x, max_x)
-                p2.set_y_range(min_y, max_y)
+                left = plotter.add_point("left", 1, colorx="r", colory="g")
+                left.set_x_range(min_x, max_x)
+                left.set_y_range(min_y, max_y)
 
-                p1.start_plotting(fig, ax)
-                p2.start_plotting(fig, ax, colorx="b", colory="y")
+                right = plotter.add_point("right", 0, colorx="b", colory="y")
+                right.set_x_range(min_x, max_x)
+                right.set_y_range(min_y, max_y)
+
+                plotter.start_plotting()
 
                 continue
 
@@ -65,13 +68,8 @@ def using_points():
             x2 = float(m[4])
             y2 = float(m[5])
 
+            plotter.plot(t - t0, [x1, x2], [1000 - y1, 1000 - y2])
             # print("t=", t)
-
-            p1.set(t, x1, y1)
-            p2.set(t, x2, y2)
-
-            p1.plot()
-            p2.plot()
 
         # time.sleep(random.random()*0.1)
 
