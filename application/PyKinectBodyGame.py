@@ -188,19 +188,7 @@ right=  x -> min=76 max=1749 y -> min=-43 max=1440 vx -> min=-205 max=344 vy -> 
         self.store(t, x1, y1, x2, y2)
 
 
-        """
-        print("Positions>>> rx={} ry={} lx={} ly={} rvx={} rvy={} lvx={} lvy={}".format(self.left.sx,
-                                                                                        self.left.sy,
-                                                                                        self.right.sx,
-                                                                                        self.right.sy,
-                                                                                        self.left.svx,
-                                                                                        self.left.svy,
-                                                                                        self.right.svx,
-                                                                                        self.right.svy
-                                                                                        ))
-        """
-
-        # status = self.bridge.send_data(self.left.sx, self.left.sy, self.right.sx, self.right.sy)
+        status = self.bridge.send_data(x1, y1, x2, y2)
 
         """
         # Right Leg

@@ -73,7 +73,11 @@ with serial.Serial('COM5', speed, timeout=.1) as arduino:
                 if (number % 1) == 0:
                     # print("send >>> {}|{}|{}|{}|{}#".format(number, x1, y1, x2, y2))
 
-                    arduino.write("{}|{}|{}|{}|{}#".format(number, x1, y1, x2, y2).encode("utf-8"))
+                    arduino.write("{}|{}|{}|{}|{}#".format(number,
+                                                           int(x1 / 8),
+                                                           int(y1 / 8),
+                                                           int(x2 / 8),
+                                                           int(y2 / 8)).encode("utf-8"))
 
                     data = arduino.readline()
                     if data:

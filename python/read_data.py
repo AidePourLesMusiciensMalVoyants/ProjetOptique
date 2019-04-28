@@ -6,8 +6,18 @@ import math
 import matplotlib.pyplot as plt
 import random
 import time
+import serial
+
 from Point import *
+
 import re
+
+HOST = 'nb-arnault4'
+PORT = 5000
+
+# speed = 9600
+speed = 115200
+
 
 
 def func():
@@ -29,6 +39,10 @@ def using_points():
     pv_data = pv_in*4 + pv_end + '$'
 
     t0 = time.time()
+
+    arduino = serial.Serial('COM5', speed, timeout=.1)
+
+    number = 0
 
     with open("../application/data.csv", "r") as f:
         lines = f.readlines()
@@ -69,7 +83,15 @@ def using_points():
             y2 = float(m[5])
 
             plotter.plot(t - t0, [x1, x2], [1000 - y1, 1000 - y2])
-            # print("t=", t)
+
+            arduino.write("{}|{}|{}|{}|{}#".format(number, int(x1/8), int(y1/8), int(x2/8), int(y2/8)).encode("utf-8"))
+
+            data = arduino.readline()
+            if data:
+                print("received >>>", data.strip())
+            number += 1
+
+        # print("t=", t)
 
         # time.sleep(random.random()*0.1)
 
