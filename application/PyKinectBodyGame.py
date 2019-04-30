@@ -188,7 +188,7 @@ right=  x -> min=76 max=1749 y -> min=-43 max=1440 vx -> min=-205 max=344 vy -> 
         self.store(t, x1, y1, x2, y2)
 
 
-        status = self.bridge.send_data(x1, y1, x2, y2)
+        # status = self.bridge.send_data(x1, y1, x2, y2)
 
         """
         # Right Leg
