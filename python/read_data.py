@@ -40,11 +40,15 @@ def using_points():
 
     t0 = time.time()
 
-    arduino = serial.Serial('COM5', speed, timeout=.1)
+    try:
+        arduino = serial.Serial('COM5', speed, timeout=.1)
+    except:
+        arduino = None
 
     number = 0
 
-    with open("../application/data.csv", "r") as f:
+    ##with open("../application/data.csv", "r") as f:
+    with open("../application/Carnutes.csv", "r") as f:
         lines = f.readlines()
         first = True
         for line in lines:
@@ -84,12 +88,13 @@ def using_points():
 
             plotter.plot(t - t0, [x1, x2], [1000 - y1, 1000 - y2])
 
-            arduino.write("{}|{}|{}|{}|{}#".format(number, int(x1/8), int(y1/8), int(x2/8), int(y2/8)).encode("utf-8"))
+            if not arduino is None:
+                arduino.write("{}|{}|{}|{}|{}#".format(number, int(x1/8), int(y1/8), int(x2/8), int(y2/8)).encode("utf-8"))
 
-            data = arduino.readline()
-            if data:
-                print("received >>>", data.strip())
-            number += 1
+                data = arduino.readline()
+                if data:
+                    print("received >>>", data.strip())
+                number += 1
 
         # print("t=", t)
 
